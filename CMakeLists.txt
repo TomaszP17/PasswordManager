@@ -11,5 +11,5 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
-add_executable(MenadzerHasel main.cpp main2.cpp)
+add_executable(MenadzerHasel main2.cpp Password.cpp Password.h PasswordManager.cpp PasswordManager.h)
 target_link_libraries(MenadzerHasel fmt)
