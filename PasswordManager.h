@@ -7,6 +7,7 @@
 
 #include <vector>
 #include "Password.h"
+#include "Timestamp.h"
 
 class PasswordManager {
 private:
@@ -15,9 +16,11 @@ private:
     std::vector<Password> passwordList;
     std::string passwordToFile;
     int counterOfResult;
+    Timestamp timestamp;
 public:
-    PasswordManager();
+    //PasswordManager();
     void setFileName(std::string fileName);
+    void setTimeStamp(const Timestamp& timestamp);
     auto setPasswordToFile(std::string passwordToFile);
     auto enterPasswordToFile() -> std::string;
     auto enterFileName() -> std::string;

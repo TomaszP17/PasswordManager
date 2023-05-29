@@ -15,7 +15,6 @@ private:
     std::string category;
     std::string website;
     std::string login;
-    std::string timestamp; //obecnie timestamp zawsze jest pusty
 public:
     Password();
     Password(std::string name, std::string password, std::string category);

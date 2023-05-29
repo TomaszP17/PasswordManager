@@ -12,7 +12,6 @@ Password::Password(std::string name, std::string password, std::string category)
     this->category = category;
     this->website = "";
     this->login = "";
-    this->timestamp = "";
 }
 
 Password::Password(std::string name, std::string password, std::string category, std::string website) {
@@ -21,7 +20,6 @@ Password::Password(std::string name, std::string password, std::string category,
     this->category = category;
     this->website = website;
     this->login = "";
-    this->timestamp = "";
 }
 
 Password::Password(std::string name, std::string password, std::string category, std::string website, std::string login) {
@@ -30,7 +28,6 @@ Password::Password(std::string name, std::string password, std::string category,
     this->category = category;
     this->website = website;
     this->login = login;
-    this->timestamp = "";
 }
 
 const std::string& Password::getName() const {

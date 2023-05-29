@@ -8,11 +8,13 @@
 #include <filesystem>
 #include "PasswordManager.h"
 #include <vector>
-
-PasswordManager::PasswordManager() {}
+#include "Timestamp.h"
 
 void PasswordManager::setFileName(std::string fileName) {
     this->fileName = fileName;
+}
+void PasswordManager::setTimeStamp(const Timestamp& timestamp) {
+    this->timestamp = timestamp;
 }
 /**
  * Funkcja ustawia wartosc zmiennej passwordToFile
@@ -35,8 +37,7 @@ auto PasswordManager::enterPasswordToFile() -> std::string {
     auto result = 0;
     counterOfResult = 0;
     while(!isGoodPassword) {
-        for (int i = 0; i < passwordFromUser.length(); i++) {
-            char ch = passwordFromUser[i];
+        for (char ch : passwordFromUser) {
             result += (int) ch;
         }
         if (result > 99999) {
@@ -56,14 +57,11 @@ auto PasswordManager::encryptData(std::string name, std::string pass, std::strin
     std::vector<std::string> arr2;
     counterOfResult = 0;
 
-    for(int i = 0; i < arr.size(); i++){
-        std::string wordBefore = arr[i];
+    for(const auto& wordBefore : arr){
         std::string stringResult = passwordToFile;
         std::string newString;
 
-        for(int j = 0; j < wordBefore.length(); j++){
-            char ch = wordBefore[j];
-            //int digitOfResult = (int)(stringResult[counterOfResult]) - '0';
+        for(char ch : wordBefore){
             int digitOfResult = (int)(stringResult[counterOfResult % stringResult.length()]) - '0';
             ch += digitOfResult;
             newString += ch;
@@ -82,23 +80,17 @@ auto PasswordManager::decryptData(std::string name, std::string pass, std::strin
     std::vector<std::string> arr2;
     counterOfResult = 0;
 
-    for(int i = 0; i < arr.size(); i++){
-        std::string wordBefore = arr[i];
+    for(const auto& wordBefore : arr){
         std::string stringResult = passwordToFile;
         std::string newString;
 
-        for(int j = 0; j < wordBefore.length(); j++){
-            char ch = wordBefore[j];
-            //int digitOfResult = (int)(stringResult[counterOfResult]) - '0';
+        for(char ch : wordBefore){
             int digitOfResult = (int)(stringResult[counterOfResult % stringResult.length()]) - '0';
             ch -= digitOfResult;
             newString += ch;
             counterOfResult+=1;
         }
         arr2.push_back(newString);
-        /*if(counterOfResult < stringResult.length()){
-            counterOfResult += 1;
-        }*/
 
     }
     return arr2;
@@ -155,18 +147,43 @@ bool PasswordManager::fileExists() {
  * Zwraca true jesli dane zostaly zapisane, w przeciwnym przypadku false
  */
 bool PasswordManager::saveToFile() {
-    std::ofstream file(fileName);
-    if (file.is_open()) {
-        for (const Password& p: passwordList) {
-            //tutaj szyfrowanie
-            std::vector<std::string> arr = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
-            file << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3]
-                 << " " << arr[4] << '\n';
+
+    std::ifstream fileIn(fileName);
+    std::ofstream fileOut("temp.txt");
+
+    if (fileIn.is_open() && fileOut.is_open()) {
+        std::string line;
+        std::vector<std::string> lines;
+
+        // Odczytaj zawartość istniejącego pliku
+        while (std::getline(fileIn, line)) {
+            lines.push_back(line);
         }
-        file.close();
+
+        fileIn.close();
+
+        // Zapisz passwordList do pliku tymczasowego
+        for (const Password& p : passwordList) {
+            std::vector<std::string> arr = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
+            fileOut << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << " " << arr[4] << '\n';
+        }
+
+        // Dodaj timestamp na końcu pliku
+        Timestamp newTimeStamp;
+        setTimeStamp(newTimeStamp);
+        fileOut << "Timestamp: " << std::to_string(newTimeStamp.getHours()) << ":" <<
+                std::to_string(newTimeStamp.getMinutes()) << ":" <<
+                std::to_string(newTimeStamp.getSeconds()) << '\n';
+
+        fileOut.close();
+
+        // Zastąp oryginalny plik plikiem tymczasowym
+        std::remove(fileName.c_str()); // Usuń oryginalny plik
+        std::rename("temp.txt", fileName.c_str()); // Zmień nazwę pliku tymczasowego na oryginalną nazwę
+
         return true;
     } else {
-        std::cout << "\nNie udalo sie otworzyc pliku do zapisu.\n";
+        std::cout << "Nie udało się otworzyć pliku do zapisu." << std::endl;
         return false;
     }
 }
@@ -470,7 +487,7 @@ void PasswordManager::changePassword() {
             std::string newLogin;
             std::cout << "Podaj nowy login: ";
             std::cin >> newLogin;
-            passwordList[index].setWebsite(newLogin);
+            passwordList[index].setLogin(newLogin);
             saveToFile();
         } else {
             std::cout << "Wybrales zly numer :(\n";
