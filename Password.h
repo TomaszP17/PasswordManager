@@ -5,7 +5,6 @@
 #ifndef MENADZERHASEL_PASSWORD_H
 #define MENADZERHASEL_PASSWORD_H
 
-
 #include <string>
 
 class Password {
@@ -30,6 +29,19 @@ public:
     void setWebsite(const std::string &website);
     const std::string &getLogin() const;
     void setLogin(const std::string &login);
+    bool operator<(const Password& other) const{
+        if(name != getName()) {
+            return name < other.getName();
+        }else if (password != getPassword()){
+            return password < other.getPassword();
+        }else if(category != other.getCategory()){
+            return category < other.getCategory();
+        }else if(website != other.getWebsite()){
+            return category < other.getWebsite();
+        } else{
+            return login < other.getLogin();
+        }
+    }
 };
 
 

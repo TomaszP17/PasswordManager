@@ -8,34 +8,32 @@
 #include <filesystem>
 #include "PasswordManager.h"
 #include <vector>
+#include <set>
 #include "Timestamp.h"
+#include "string"
 
 void PasswordManager::setFileName(std::string fileName) {
     this->fileName = fileName;
 }
-void PasswordManager::setTimeStamp(const Timestamp& timestamp) {
-    this->timestamp = timestamp;
-}
+
 /**
  * Funkcja ustawia wartosc zmiennej passwordToFile
  * @param passwordToFile - haslo do odszyfrowania pliku
- * @return - void
  */
 auto PasswordManager::setPasswordToFile(std::string passwordToFile){
     this->passwordToFile = passwordToFile;
 }
 /**
  * Funkcja wczytuje od uzytkownika haslo sluzace do odszyfrowania zawartosci pliku
- * @return Zwraca haslo
+ * @return Zwraca haslo (string)
  */
 auto PasswordManager::enterPasswordToFile() -> std::string {
     std::cout << "Podaj haslo do pliku: ";
     std::string passwordFromUser;
     std::cin >> passwordFromUser;
-    //return passwordFromUser;
-    bool isGoodPassword = false;
+
+    /*bool isGoodPassword = false;
     auto result = 0;
-    counterOfResult = 0;
     while(!isGoodPassword) {
         for (char ch : passwordFromUser) {
             result += (int) ch;
@@ -47,53 +45,36 @@ auto PasswordManager::enterPasswordToFile() -> std::string {
             isGoodPassword = true;
         }
     }
-    return std::to_string(result);
+    return std::to_string(result);*/
+    std::string result;
+    for(char c : passwordFromUser){
+        std::string chs = std::to_string((int)c);
+        result += chs;
+    }
+    std::cout << result;
 }
 /**
  * Funkcja szyfruje dane za pomoca hasla podanego przez uzytkownika
  */
-auto PasswordManager::encryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::vector<std::string> {
-    std::vector<std::string> arr = {name, pass, category, website, login};
-    std::vector<std::string> arr2;
-    counterOfResult = 0;
-
-    for(const auto& wordBefore : arr){
-        std::string stringResult = passwordToFile;
-        std::string newString;
-
-        for(char ch : wordBefore){
-            int digitOfResult = (int)(stringResult[counterOfResult % stringResult.length()]) - '0';
-            ch += digitOfResult;
-            newString += ch;
-            counterOfResult+=1;
-        }
-        arr2.push_back(newString);
-        if(counterOfResult < stringResult.length()){
-            counterOfResult += 1;
-        }
+auto PasswordManager::encryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::string {
+    std::string input = name + "|" + pass + "|" + category + "|" + website + "|" + login;
+    std::string result;
+    for(int i = 0; i < input.length(); i++){
+        result += char(int(input[i] + 5));
     }
-    return arr2;
-
+    return result;
 }
-auto PasswordManager::decryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::vector<std::string>{
-    std::vector<std::string> arr = {name, pass, category, website, login};
-    std::vector<std::string> arr2;
-    counterOfResult = 0;
-
-    for(const auto& wordBefore : arr){
-        std::string stringResult = passwordToFile;
-        std::string newString;
-
-        for(char ch : wordBefore){
-            int digitOfResult = (int)(stringResult[counterOfResult % stringResult.length()]) - '0';
-            ch -= digitOfResult;
-            newString += ch;
-            counterOfResult+=1;
-        }
-        arr2.push_back(newString);
-
+/**
+ * Funkcja rozszyfrowywująca dane - wykonuje odwrotną operację do szyfrowania przy użyciu klucza
+ * @return zwraca wektor z rozszyfrowanymi danymi
+ */
+auto PasswordManager::decryptData(std::string line) -> std::string {
+    //std::string input = name + "|" + pass + "|" + category + "|" + website + "|" + login;
+    std::string result;
+    for(int i = 0; i < line.length(); i++){
+            result += char(int(line[i] - 5));
     }
-    return arr2;
+    return result;
 }
 /**
 * Funkcja wczytuje od uzytkownika nazwe pliku ktory chce otworzyc
@@ -147,43 +128,19 @@ bool PasswordManager::fileExists() {
  * Zwraca true jesli dane zostaly zapisane, w przeciwnym przypadku false
  */
 bool PasswordManager::saveToFile() {
+    std::ofstream file(fileName);
 
-    std::ifstream fileIn(fileName);
-    std::ofstream fileOut("temp.txt");
-
-    if (fileIn.is_open() && fileOut.is_open()) {
-        std::string line;
-        std::vector<std::string> lines;
-
-        // Odczytaj zawartość istniejącego pliku
-        while (std::getline(fileIn, line)) {
-            lines.push_back(line);
-        }
-
-        fileIn.close();
-
-        // Zapisz passwordList do pliku tymczasowego
+    if(file.is_open()){
         for (const Password& p : passwordList) {
-            std::vector<std::string> arr = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
-            fileOut << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << " " << arr[4] << '\n';
+            //std::vector<std::string> arr = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
+            //fileOut << arr[0] << "|" << arr[1] << "|" << arr[2] << "|" << arr[3] << "|" << arr[4] << '\n';
+            std::string line = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
+            file << line << std::endl;
         }
-
-        // Dodaj timestamp na końcu pliku
-        Timestamp newTimeStamp;
-        setTimeStamp(newTimeStamp);
-        fileOut << "Timestamp: " << std::to_string(newTimeStamp.getHours()) << ":" <<
-                std::to_string(newTimeStamp.getMinutes()) << ":" <<
-                std::to_string(newTimeStamp.getSeconds()) << '\n';
-
-        fileOut.close();
-
-        // Zastąp oryginalny plik plikiem tymczasowym
-        std::remove(fileName.c_str()); // Usuń oryginalny plik
-        std::rename("temp.txt", fileName.c_str()); // Zmień nazwę pliku tymczasowego na oryginalną nazwę
-
+        file.close();
         return true;
-    } else {
-        std::cout << "Nie udało się otworzyć pliku do zapisu." << std::endl;
+    } else{
+        std::cout << "\nNie udalo sie otworzyc pliku do zapisu danych.\n";
         return false;
     }
 }
@@ -194,68 +151,116 @@ bool PasswordManager::saveToFile() {
  */
 bool PasswordManager::loadFromFile() {
     std::ifstream file(fileName);
-    if (file.is_open()) {
-        passwordList.clear();
+    std::string line;
+    if(file.is_open()){
+    while(std::getline(file, line)){
         std::string name, password, category, website, login;
-        while (file >> name >> password >> category >> website >> login) {
-            //funkcja odszyfrowywujaca
-            std::vector<std::string> arr = decryptData(name, password, category, website, login);
-            Password p(arr[0], arr[1], arr[2],arr[3],arr[4]);
-            passwordList.push_back(p);
-        }
-        file.close();
-        return true;
-    } else {
-        std::cout << "\nNie udalo sie otworzyc pliku do odczytu.\n";
+        std::string decryptedLine = decryptData(line);
+        std::stringstream ss(decryptedLine);
+        std::getline(ss, name, '|');
+        std::getline(ss, password, '|');
+        std::getline(ss, category, '|');
+        std::getline(ss, website, '|');
+        std::getline(ss, login, '|');
+        /*std::vector<std::string> arr = decryptData(name, password, category, website, login);
+        Password p(arr[0], arr[1], arr[2],arr[3],arr[4]);*/
+        Password p(name, password, category, website, login);
+        passwordList.push_back(p);
+    }
+    file.close();
+    return true;
+} else{
+        std::cout << "\nNie udalo sie otworzyc pliku do odczytu\n";
         return false;
     }
 }
-/**
- * Funkcja sprawdza czy haslo podane przez uzytkownika jest bezpieczne
- * Minimalna dlugosc = 6 i min 1 mala litera duza litera cyfra i znak specjalny
- */
-bool PasswordManager::isPasswordSecure(const std::string& password){
-    if(password.length() < 6){
-        return false;
-    }
-    bool hasupperCase = false;
-    bool haslowerCase = false;
-    bool hasDigit = false;
-    bool hasSpecial = false;
-    for(auto x : password){
+auto PasswordManager::printParameters()->void {
+    std::cout << "1. Name\n";
+    std::cout << "2. Password\n";
+    std::cout << "3. Category\n";
+    std::cout << "4. Website\n";
+    std::cout << "5. Login\n";
+}
+bool PasswordManager::hasUpperCase(const std::string& password){
+    for(auto const& x : password){
         if(x >= 'A' && x <= 'Z'){
-            hasupperCase = true;
-        }else if(x >= 'a' && x <= 'z'){
-            haslowerCase = true;
-        }else if(x >= '1' && x <= '9'){
-            hasDigit = true;
-        }else{
-            //skoro nie jest litera ani cyfra to musi byc to jakis znak specjalny
-            hasSpecial = true;
+            return true;
         }
     }
-    if(hasDigit && haslowerCase && hasupperCase && hasSpecial){
+    return false;
+}
+bool PasswordManager::hasLowerCase(const std::string& password){
+    for(auto const& x : password){
+        if(x >= 'a' && x <= 'z'){
+            return true;
+        }
+    }
+    return false;
+}
+bool PasswordManager::hasDigit(const std::string& password){
+    for(auto const& x : password){
+        if(x >= '1' && x <= '9'){
+            return true;
+        }
+    }
+    return false;
+}
+bool PasswordManager::hasSpecialChar(const std::string& password){
+    for(auto const& x : password){
+        if(x >= '!' && x <= ')'){
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Funkcja sprawdza czy haslo podane przez uzytkownika jest bezpieczne
+ * Minimalna dlugosc = 10 i min 1 mala litera duza litera cyfra i znak specjalny
+ */
+void PasswordManager::isPasswordSecure(const std::string& password){
+    if(password.length() < 10){
+        std::cout << "\nTWOJE HASLO POWINNO MIEC CONAJMNIEJ 10 ZNAKOW\n";
+    }
+    if(hasUpperCase(password) && hasLowerCase(password) && hasDigit(password) && hasSpecialChar(password)){
         std::cout << "\nTwoje haslo jest bezpieczne :)\n";
-        return true;
     }else{
-        std::cout << "\nHaslo nie jest bezpieczne :(\n";
+        std::cout << "\nHaslo nie jest bezpieczne :( [powinno zawierac conajmniej 1 mala 2 duza litere 1 cyfre i 1 znak specjalny]\n";
+        std::cout << "Czy pomimo to chcesz kontynuowac? [1-TAK] [2-NIE]: ";
+    }
+
+}
+bool PasswordManager::isPasswordGood(std::string const& chars, bool small, bool big, bool dig, bool spec){
+    if(small && !hasLowerCase(chars)){
         return false;
     }
+    if(big && !hasUpperCase(chars)){
+        return false;
+    }
+    if(dig && !hasDigit(chars)){
+        return false;
+    }
+    if(spec && !hasSpecialChar(chars)){
+        return false;
+    }
+    return true;
 }
 /**
  * Funkcja generuje haslo
  * Nie dziala dlugosc generowanych hasel tzn w przypadku podania np dlugosci 6 haslo generuje sie dluzsze
  */
-std::string PasswordManager::generatePassword(){
+std::string PasswordManager::generatePassword() {
     std::string generatedPassword;
     int passwordLength = 0;
     bool outOfLoop = false;
-    //sprawdzamy czy haslo nie jest krotsze od wymaganego rozmiaru (6)
-    while(!outOfLoop){
+
+    //sprawdzamy czy haslo nie jest krotsze od wymaganego rozmiaru (10)
+    while (!outOfLoop) {
         std::cout << "Podaj prosze dlugosc hasla: ";
         std::cin >> passwordLength;
-        if(passwordLength < 6){
-            std::cout << "\nHaslo nie moze byc krotsze niz 6 znakow\n";
+
+        if (passwordLength < 10) {
+            std::cout << "\nHaslo nie moze byc krotsze niz 10 znakow\n";
             outOfLoop = false;
             passwordLength = 0;
             continue;
@@ -268,17 +273,63 @@ std::string PasswordManager::generatePassword(){
     std::string bigLetters = "ABCDEFGHIJKLMNOPRSTUWXYZ";
     std::string digits = "0123456789";
     std::string specials = "!@#$%^&*()";
-    std::string chars = "";
-    chars += smallLetters+bigLetters+digits+specials;
+    std::string chars;
+    bool small = false;
+    bool big = false;
+    bool digs = false;
+    bool spec = false;
+    int input;
+    bool endOfLoop = false;
+    do {
+        // Pobierz preferencje użytkownika odnośnie składników hasła
+        std::cout << ">>Podaj prosze czy chcesz abys mial duze Litery: [1-TAK] [2-NIE]: ";
+        std::cin >> input;
+        if (input == 1) {
+            chars += bigLetters;
+            big = true;
+        }
 
-    srand (time(nullptr));
-    while(!isPasswordSecure(generatedPassword)){
-        int counter = 0;
-        while(counter < passwordLength){
-            generatedPassword += chars[rand()%chars.length()];
-            counter++;
+        std::cout << ">>Podaj prosze czy chcesz abys mial male litery: [1-TAK] [2-NIE]: ";
+        std::cin >> input;
+        if (input == 1) {
+            chars += smallLetters;
+            small = true;
+        }
+
+        std::cout << ">>Podaj prosze czy chcesz abys mial cyfry: [1-TAK] [2-NIE]: ";
+        std::cin >> input;
+        if (input == 1) {
+            chars += digits;
+            digs = true;
+        }
+
+        std::cout << ">>Podaj prosze czy chcesz abys znaki specjalne: [1-TAK] [2-NIE]: ";
+        std::cin >> input;
+        if (input == 1) {
+            chars += specials;
+            spec = true;
+        }
+
+        if (chars.length() <= 0) {
+            std::cout << "NIE PODALES ZADNYCH DOSTEPNYCH ZNAKOW WIEC NIE JESTEM W STANIE WYGENEROWAC HASLA :(\n";
+            small = false;
+            big = false;
+            digs = false;
+            spec = false;
+        } else {
+            endOfLoop = true;
+        }
+    } while (!endOfLoop);
+
+    srand(time(nullptr));
+
+    while (!isPasswordGood(generatedPassword, small, big, digs, spec)) {
+        generatedPassword = "";
+        for (int i = 0; i < passwordLength; i++) {
+            generatedPassword += chars[rand() % chars.length()];
         }
     }
+
     return generatedPassword;
 }
 
@@ -298,12 +349,15 @@ bool PasswordManager::isPasswordExists(const std::string& password){
 void PasswordManager::addPassword() {
     std::string name, password, category, website, login;
     std::cout << "\nDodawanie nowego hasla\n";
-    std::cout << "Podaj nazwe np. (Google): ";
-    std::cin >> name;
+    std::cout << ">>Podaj nazwe np. (Google): ";
+    //std::cin >> name;
+    std::cin.get();
+    std::getline(std::cin, name);
     bool passwordSet = false;
     while(!passwordSet) {
-        std::cout << "Podaj haslo lub wygeneruj automatycznie wybierajac [1] na klawiaturze";
-        std::cin >> password;
+        std::cout << ">>Podaj haslo lub wygeneruj automatycznie wybierajac [1] na klawiaturze";
+        //std::cin >> password;
+        std::getline(std::cin, password);
         if (password == "1") {
             password = generatePassword();
             std::cout << "Twoje wygenerowane haslo to: " << password << '\n';
@@ -313,20 +367,23 @@ void PasswordManager::addPassword() {
                 std::cout << "Haslo wystepowalo w przeszlosci, wprowadz inne ze wzgledow bezpieczenstwa\n";
                 passwordSet = false;
             }else{
-                if(!isPasswordSecure(password)){
-                    std::cout << "Haslo nie jest bezpieczne\n";
-                    passwordSet = false;
-                }else{
+                isPasswordSecure(password);
+                std::string decision;
+                std::getline(std::cin, decision);
+                if(decision == "1"){
                     passwordSet = true;
+                } else{
+                    passwordSet = false;
                 }
             }
         }
     }
     bool isCategoryOkay = false;
+    std::cin.get();
     while(!isCategoryOkay) {
-        std::cout << "Podaj kategorie z podanych ponizej: \n";
+        std::cout << ">>Podaj kategorie z podanych powyzej: \n";
         printCategory();
-        std::cin >> category;
+        std::getline(std::cin, category);
         for (const auto &x: categoryList) {
             if (category == x) {
                 isCategoryOkay = true;
@@ -337,10 +394,9 @@ void PasswordManager::addPassword() {
             std::cout << "Podales zla kategorie, sprobuj ponownie!\n";
         }
     }
-    std::cin.get();
-    std::cout << "Podaj strone (opcjonalne): ";
+    std::cout << ">>Podaj strone (opcjonalne): ";
     std::getline(std::cin, website);
-    std::cout << "Podaj login (opcjonalne): ";
+    std::cout << ">>Podaj login (opcjonalne): ";
     std::getline(std::cin, login);
     Password p(name, password, category, website, login);
     passwordList.push_back(p);
@@ -359,7 +415,7 @@ void PasswordManager::removePassword() {
     std::cout << "[2] - wiecej hasel\n";
 
     int choise = 0;
-    std::cout << "Wybor: ";
+    std::cout << ">>Wybor: ";
     std::cin >> choise;
 
     if(choise == 1){
@@ -367,7 +423,7 @@ void PasswordManager::removePassword() {
         printPasswords(); //wyswietla hasla
 
         int index = 0;
-        std::cout << "Podaj indeks hasla do usuniecia: [UWAGA OPERACJA TA POWODUJE NIEODWRACALNE ZMIANY W BAZIE HASEL] ";
+        std::cout << ">>Podaj indeks hasla do usuniecia: [UWAGA OPERACJA TA POWODUJE NIEODWRACALNE ZMIANY W BAZIE HASEL] ";
         std::cin >> index;
         if(index < passwordList.size()){
             passwordList.erase(passwordList.begin() + index);
@@ -382,13 +438,13 @@ void PasswordManager::removePassword() {
 
         printPasswords();
         int howManyIndex = 0;
-        std::cout << "Podaj ile chcesz usunac hasel: [UWAGA OPERACJA TA POWODUJE NIEODWRACALNE ZMIANY W BAZIE HASEL] ";
+        std::cout << ">>Podaj ile chcesz usunac hasel: [UWAGA OPERACJA TA POWODUJE NIEODWRACALNE ZMIANY W BAZIE HASEL] ";
         std::cin >> howManyIndex;
 
         for(int i = 0; i < howManyIndex; i++){
             printPasswords();
             int index = 0;
-            std::cout << "Podaj indeks hasla do usuniecia: ";
+            std::cout << ">>Podaj indeks hasla do usuniecia: ";
             std::cin >> index;
             if(index < passwordList.size()){
                 passwordList.erase(passwordList.begin() + index);
@@ -432,11 +488,7 @@ void PasswordManager::changePassword() {
     //sprawdza czy index jest prawidlowy jesli tak to przechodzi do wyboru zmiany w istniejacym juz hasle
     if (index < passwordList.size()) {
         std::cout << "\nCo chcesz zmienić w poniższym rekordzie?\n";
-        std::cout << "1. Nazwe\n";
-        std::cout << "2. Haslo\n";
-        std::cout << "3. Kategorie\n";
-        std::cout << "4. Strone\n";
-        std::cout << "5. Login\n";
+        printParameters();
         int choise = 0;
         std::cin >> choise;
         if (choise == 1) {
@@ -449,7 +501,7 @@ void PasswordManager::changePassword() {
             bool passwordSet = false;
             std::string newPassword;
             while(!passwordSet) {
-                std::cout << "Podaj haslo lub wygeneruj automatycznie wybierajac [1] na klawiaturze";
+                std::cout << ">>Podaj haslo lub wygeneruj automatycznie wybierajac [1] na klawiaturze";
                 std::cin >> newPassword;
                 if (newPassword == "1") {
                     newPassword = generatePassword();
@@ -459,13 +511,6 @@ void PasswordManager::changePassword() {
                     if(isPasswordExists(newPassword)){
                         std::cout << "Haslo wystepowalo w przeszlosci, wprowadz inne ze wzgledow bezpieczenstwa\n";
                         passwordSet = false;
-                    }else{
-                        if(!isPasswordSecure(newPassword)){
-                            std::cout << "Haslo nie jest bezpieczne\n";
-                            passwordSet = false;
-                        }else{
-                            passwordSet = true;
-                        }
                     }
                 }
             }
@@ -473,13 +518,13 @@ void PasswordManager::changePassword() {
             saveToFile();
         } else if (choise == 3) {
             std::string newCategory;
-            std::cout << "Podaj nowa kategorie: ";
+            std::cout << ">>Podaj nowa kategorie: ";
             std::cin >> newCategory;
             passwordList[index].setCategory(newCategory);
             saveToFile();
         } else if (choise == 4) {
             std::string newWebsite;
-            std::cout << "Podaj nowa strone: ";
+            std::cout << ">>Podaj nowa strone: ";
             std::cin >> newWebsite;
             passwordList[index].setWebsite(newWebsite);
             saveToFile();
@@ -496,40 +541,95 @@ void PasswordManager::changePassword() {
         std::cout << "\nNie ma hasla o takim indeksie.\n";
     }
 }
+
 /**
  * Funkcja szuka podobnych wynikow wsrod hasel
  * Pyta o wszystkie mozliwe dane i jezeli ktores haslo zawiera podana m.in kategorie to wyswietli vector z tymi wynikami
  */
 void PasswordManager::searchPassword(){
-    std::cout << "Zaraz poprosze Cie o wypelnienie danych ktorych szukasz: \n";
-    std::string name, password, category, website, login;
-    std::cout << "Podaj nazwe np. (Google): ";
-    std::cin >> name;
-    std::cout << "Podaj haslo: ";
-    std::cin >> password;
-    std::cout << "Podaj kategorie: ";
-    std::cin >> category;
-    std::cout << "Podaj strone: ";
-    std::cin >> website;
-    std::cout << "Podaj login: ";
-    std::cin >> login;
-    auto results = std::vector<Password>();
-    std::cout << "[OTO PODOBNE REZULTATY]\n";
-    for(const auto& x : passwordList){
-        if (x.getName() == name) {
-            results.push_back(x);
-        } else if (x.getPassword() == password) {
-            results.push_back(x);
-        } else if (x.getCategory() == category) {
-            results.push_back(x);
-        } else if (x.getWebsite() == website) {
-            results.push_back(x);
-        } else if (x.getLogin() == login) {
-            results.push_back(x);
-        }
+    std::cout << "Wybierz parametr, po ktorym chcesz szukac: \n";
+    printParameters();
+    std::cout << "Podaj index po ktorym chcesz szukac: [PODAWAJ INDEXY PO SPACJI]";
+    std::cin.get();
+    std::string index;
+    std::getline(std::cin, index);
+    std::set<int> indexes;
+    std::stringstream ss(index);
+    int number;
+    while(ss >> number){
+        indexes.insert(number);
     }
-    for(const auto& x : results){
-        std::cout << ". " << x.getName() << " | " << x.getPassword() << " | " << x.getCategory() << " | " << x.getWebsite() << " | " << x.getLogin() << '\n';
+
+    std::set<Password> result;
+    std::string phraseFromUser;
+for(auto const& x : indexes) {
+    switch (x) {
+        case 1:
+            std::cout << "Podaj name jakiego szukasz: ";
+            std::getline(std::cin, phraseFromUser);
+            for (Password& y: passwordList) {
+                std::string name = y.getName();
+                size_t found = name.find(phraseFromUser);
+                if (found != std::string::npos) {
+                    result.insert(y);
+                }
+            }
+            break;
+        case 2:
+            std::cout << "Podaj password jakiego szukasz: ";
+            std::getline(std::cin, phraseFromUser);
+            for (Password &y: passwordList) {
+                std::string password = y.getPassword();
+                size_t found = password.find(phraseFromUser);
+                if (found != std::string::npos) {
+                    result.insert(y);
+                }
+            }
+            break;
+        case 3:
+            //szukanie po kategorii
+            std::cout << "Podaj kategorie jakiego szukasz: ";
+            std::getline(std::cin, phraseFromUser);
+            for (Password &y: passwordList) {
+                std::string category = y.getCategory();
+                size_t found = category.find(phraseFromUser);
+                if (found != std::string::npos) {
+                    result.insert(y);
+                }
+            }
+            break;
+        case 4:
+            //szukanie po stronie internetowej
+            std::cout << "Podaj website jakiego szukasz: ";
+            std::getline(std::cin, phraseFromUser);
+            for (Password &y: passwordList) {
+                std::string website = y.getWebsite();
+                size_t found = website.find(phraseFromUser);
+                if (found != std::string::npos) {
+                    result.insert(y);
+                }
+            }
+            break;
+        case 5:
+            //szukanie po loginie
+            std::cout << "Podaj login jakiego szukasz: ";
+            std::getline(std::cin, phraseFromUser);
+            for (Password &y: passwordList) {
+                std::string login = y.getLogin();
+                size_t found = login.find(phraseFromUser);
+                if (found != std::string::npos) {
+                    result.insert(y);
+                }
+            }
+            break;
+        default:
+            std::cout << "Podales nieprawidlowy index :(\n";
+            break;
+    }
+}
+    for (const auto &x: result) {
+        std::cout << ". " << x.getName() << " | " << x.getPassword() << " | " << x.getCategory() << " | "
+                  << x.getWebsite() << " | " << x.getLogin() << '\n';
     }
 }
 /**
@@ -538,12 +638,7 @@ void PasswordManager::searchPassword(){
  */
 void PasswordManager::sortPasswords(){
     std::cout << "Podaj parametry sortowania:\n";
-    std::cout << "1. Name\n";
-    std::cout << "2. Password\n";
-    std::cout << "3. Category\n";
-    std::cout << "4. Website\n";
-    std::cout << "5. Login\n";
-
+    printParameters();
     std::vector<int> sortingParams;
     int param;
     do {
@@ -645,7 +740,7 @@ void PasswordManager::deleteCategory(){
 }
 
 void PasswordManager::menu() {
-    int choice;
+
     while (true) {
         std::cout << "\n>>- - - - - - - - - - - - - - - - - - - - - - -<<\n";
         std::cout << "WYBIERZ DZIALANIE:\n";
@@ -660,6 +755,7 @@ void PasswordManager::menu() {
         std::cout << "[9] Zakoncz program\n";
         std::cout << ">>- - - - - - - - - - - - - - - - - - - - - - -<<\n";
         std::cout << "Co wybierasz?: ";
+        int choice;
         std::cin >> choice;
         switch (choice) {
             case 1:
@@ -687,7 +783,6 @@ void PasswordManager::menu() {
                 deleteCategory();
                 break;
             case 9:
-                //std::cout << "░░░░░░░░░░░░░▄▄▀▀▀▀▀▀▄▄\n░░░░░░░░░░▄▄▀▄▄▄█████▄▄▀▄\n░░░░░░░░▄█▀▒▀▀▀█████████▄█▄\n░░░░░░▄██▒▒▒▒▒▒▒▒▀▒▀▒▀▄▒▀▒▀▄\n░░░░▄██▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█▄\n░░░░██▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█▌\n░░░▐██▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▐█\n░▄▄███▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█\n▐▒▄▀██▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▐▌\n▌▒▒▌▒▀▒▒▒▒▒▒▄▀▀▄▄▒▒▒▒▒▒▒▒▒▒▒▒█▌\n▐▒▀▒▌▒▒▒▒▒▒▒▄▄▄▄▒▒▒▒▒▒▒▀▀▀▀▄▒▐\n░█▒▒▌▒▒▒▒▒▒▒▒▀▀▒▀▒▒▐▒▄▀██▀▒▒▒▌\n░░█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▐▒▒▒▒▒▒▒▒█\n░░░▀▌▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▌▒▒▒▒▒▒▄▀\n░░░▐▒▒▒▒▒▒▒▒▒▄▀▐▒▒▒▒▒▐▒▒▒▒▄▀\n░░▄▌▒▒▒▒▒▒▒▄▀▒▒▒▀▄▄▒▒▒▌▒▒▒▐▀▀▀▄▄▄\n▄▀░▀▄▒▒▒▒▒▒▒▒▀▀▄▄▄▒▄▄▀▌▒▒▒▌░░░░░░\n▐▌░░░▀▄▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▄▀░░░░░░░\n░█░░░░░▀▄▄▒▒▒▒▒▒▒▒▒▒▒▒▄▀░█░░░░░░░\n░░█░░░░░░░▀▄▄▄▒▒▒▒▒▒▄▀░░░░█░░░░░░\n░░░█░░░░░░░░░▌▀▀▀▀▀▀▐░░░░░▐▌░░░░░";
                 exit(0); //zamyka konsole
             default:
                 std::cout << "\nNieprawidlowy wybor.\n";
@@ -705,9 +800,6 @@ void PasswordManager::start() {
     std::time_t c_time = std::chrono::system_clock::to_time_t(now);
     std::cout << "Current time: " << std::ctime(&c_time);
 
-    //serce programu
-    //tutaj jest zalączanie plikow i sprawdzanie czy istnieją
-
     std::cout << "\nWitaj w Password Manager autorstwa Tomasza Plucinskiego\n";
     std::cout << "Aktualna wersja programu to: 0.1v\n";
     std::cout << "W przypadku jakichkolwiek problemow skontaktuj sie ze mna mailowo: papieskapomoc@gmail.com\n";
@@ -716,7 +808,6 @@ void PasswordManager::start() {
         fileName = enterFileName();
         setFileName(fileName);
         if (fileExists()) {
-            //tutaj trzeba przeprowadzic pytanie o haslo i odszyfrowanie danych
             passwordToFile = enterPasswordToFile();
             setPasswordToFile(passwordToFile);
             if (loadFromFile()) {

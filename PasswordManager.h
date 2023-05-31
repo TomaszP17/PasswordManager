@@ -11,32 +11,35 @@
 
 class PasswordManager {
 private:
-    std::vector<std::string> categoryList = {"Internet", "Wideo", "Edukacja"};
+    std::vector<std::string> categoryList = {"Internet", "Wideo", "Edukacja", "Gry", "Muzyka", "Rozrywka", "Biznes"};
     std::string fileName;
     std::vector<Password> passwordList;
     std::string passwordToFile;
     int counterOfResult;
-    Timestamp timestamp;
 public:
-    //PasswordManager();
     void setFileName(std::string fileName);
-    void setTimeStamp(const Timestamp& timestamp);
     auto setPasswordToFile(std::string passwordToFile);
     auto enterPasswordToFile() -> std::string;
     auto enterFileName() -> std::string;
     auto checkFileStatus(std::fstream *file) -> bool;
     bool fileExists();
-    auto encryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::vector<std::string>;
-    auto decryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::vector<std::string>;
+    auto encryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::string;
+    auto decryptData(std::string line) -> std::string;
     bool saveToFile();
     bool loadFromFile();
-    bool isPasswordSecure(const std::string& password);
+    void isPasswordSecure(const std::string& password);
+    bool isPasswordGood(std::string const& chars, bool small, bool big, bool dig, bool spec);
+    bool hasUpperCase(const std::string& password);
+    bool hasLowerCase(const std::string& password);
+    bool hasDigit(const std::string& password);
+    bool hasSpecialChar(const std::string& password);
     bool isPasswordExists(const std::string& password);
     std::string generatePassword();
     void addPassword();
     void removePassword();
     void printPasswords();
     void changePassword();
+    auto printParameters()->void;
     void searchPassword();
     void sortPasswords();
     void printCategory();
