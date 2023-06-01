@@ -15,7 +15,6 @@
 void PasswordManager::setFileName(std::string fileName) {
     this->fileName = fileName;
 }
-
 /**
  * Funkcja ustawia wartosc zmiennej passwordToFile
  * @param passwordToFile - haslo do odszyfrowania pliku
@@ -31,27 +30,16 @@ auto PasswordManager::enterPasswordToFile() -> std::string {
     std::cout << "Podaj haslo do pliku: ";
     std::string passwordFromUser;
     std::cin >> passwordFromUser;
-
-    /*bool isGoodPassword = false;
-    auto result = 0;
-    while(!isGoodPassword) {
-        for (char ch : passwordFromUser) {
-            result += (int) ch;
-        }
-        if (result > 99999) {
-            std::cout << "Twoje Haslo jest za dlugie, podaj inne :)\n";
-            passwordFromUser = enterPasswordToFile();
-        } else {
-            isGoodPassword = true;
-        }
-    }
-    return std::to_string(result);*/
     std::string result;
+
     for(char c : passwordFromUser){
         std::string chs = std::to_string((int)c);
         result += chs;
     }
+
+    std::sort(result.begin() + 2, result.end());
     std::cout << result;
+    return result;
 }
 /**
  * Funkcja szyfruje dane za pomoca hasla podanego przez uzytkownika
@@ -60,8 +48,9 @@ auto PasswordManager::encryptData(std::string name, std::string pass, std::strin
     std::string input = name + "|" + pass + "|" + category + "|" + website + "|" + login;
     std::string result;
     for(int i = 0; i < input.length(); i++){
-        result += char(int(input[i] + 5));
+        result += char(int(input[i] + (int)(passwordToFile[counterOfResult]) + counterOfResult + passwordToFile.length()));
     }
+    counterOfResult++;
     return result;
 }
 /**
@@ -69,12 +58,15 @@ auto PasswordManager::encryptData(std::string name, std::string pass, std::strin
  * @return zwraca wektor z rozszyfrowanymi danymi
  */
 auto PasswordManager::decryptData(std::string line) -> std::string {
-    //std::string input = name + "|" + pass + "|" + category + "|" + website + "|" + login;
     std::string result;
-    for(int i = 0; i < line.length(); i++){
-            result += char(int(line[i] - 5));
+
+    for (int i = 0; i < line.length(); i++) {
+        //char decryptedChar = line[i] - (passwordToFile[counterOfResult] + counterOfResult + passwordToFile.length());
+        result += char(int(line[i] - (int)(passwordToFile[counterOfResult] + counterOfResult + passwordToFile.length())));
     }
+    counterOfResult++;
     return result;
+
 }
 /**
 * Funkcja wczytuje od uzytkownika nazwe pliku ktory chce otworzyc
@@ -131,9 +123,8 @@ bool PasswordManager::saveToFile() {
     std::ofstream file(fileName);
 
     if(file.is_open()){
+        counterOfResult = 0;
         for (const Password& p : passwordList) {
-            //std::vector<std::string> arr = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
-            //fileOut << arr[0] << "|" << arr[1] << "|" << arr[2] << "|" << arr[3] << "|" << arr[4] << '\n';
             std::string line = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
             file << line << std::endl;
         }
@@ -144,7 +135,6 @@ bool PasswordManager::saveToFile() {
         return false;
     }
 }
-
 /**
  * Funkcja wczytuje dane z pliku fileName i zapisuje je do wektora passwordList
  * Zwraca true jesli dane zostaly wczytane, w przeciwnym przypadku false
@@ -153,22 +143,23 @@ bool PasswordManager::loadFromFile() {
     std::ifstream file(fileName);
     std::string line;
     if(file.is_open()){
-    while(std::getline(file, line)){
-        std::string name, password, category, website, login;
-        std::string decryptedLine = decryptData(line);
-        std::stringstream ss(decryptedLine);
-        std::getline(ss, name, '|');
-        std::getline(ss, password, '|');
-        std::getline(ss, category, '|');
-        std::getline(ss, website, '|');
-        std::getline(ss, login, '|');
-        /*std::vector<std::string> arr = decryptData(name, password, category, website, login);
-        Password p(arr[0], arr[1], arr[2],arr[3],arr[4]);*/
-        Password p(name, password, category, website, login);
-        passwordList.push_back(p);
-    }
-    file.close();
-    return true;
+        counterOfResult = 0;
+        while(std::getline(file, line)){
+            std::string name, password, category, website, login;
+            std::string decryptedLine = decryptData(line);
+            std::stringstream ss(decryptedLine);
+            //std::stringstream ss(line);
+            std::getline(ss, name, '|');
+            std::getline(ss, password, '|');
+            std::getline(ss, category, '|');
+            std::getline(ss, website, '|');
+            std::getline(ss, login, '|');
+
+            Password p(name, password, category, website, login);
+            passwordList.push_back(p);
+        }
+        file.close();
+        return true;
 } else{
         std::cout << "\nNie udalo sie otworzyc pliku do odczytu\n";
         return false;
@@ -329,7 +320,6 @@ std::string PasswordManager::generatePassword() {
             generatedPassword += chars[rand() % chars.length()];
         }
     }
-
     return generatedPassword;
 }
 
