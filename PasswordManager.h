@@ -16,16 +16,20 @@ private:
     std::vector<Password> passwordList;
     std::string passwordToFile;
     int counterOfResult;
+    std::string lastTimeStamp;
 public:
     void setFileName(std::string fileName);
     auto setPasswordToFile(std::string passwordToFile);
+    auto setTimeStamp(std::string timestamp);
     auto enterPasswordToFile() -> std::string;
     auto enterFileName() -> std::string;
     auto checkFileStatus(std::fstream *file) -> bool;
     bool fileExists();
     auto encryptData(std::string name, std::string pass, std::string category, std::string website, std::string login) -> std::string;
     auto decryptData(std::string line) -> std::string;
+    int counterLines(std::ifstream& file);
     bool saveToFile();
+    std::string newTimeStamp();
     bool loadFromFile();
     void isPasswordSecure(const std::string& password);
     bool isPasswordGood(std::string const& chars, bool small, bool big, bool dig, bool spec);

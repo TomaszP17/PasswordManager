@@ -22,6 +22,9 @@ void PasswordManager::setFileName(std::string fileName) {
 auto PasswordManager::setPasswordToFile(std::string passwordToFile){
     this->passwordToFile = passwordToFile;
 }
+auto PasswordManager::setTimeStamp(std::string timestamp){
+    this->lastTimeStamp = timestamp;
+}
 /**
  * Funkcja wczytuje od uzytkownika haslo sluzace do odszyfrowania zawartosci pliku
  * @return Zwraca haslo (string)
@@ -48,7 +51,12 @@ auto PasswordManager::encryptData(std::string name, std::string pass, std::strin
     std::string input = name + "|" + pass + "|" + category + "|" + website + "|" + login;
     std::string result;
     for(int i = 0; i < input.length(); i++){
-        result += char(int(input[i] + (int)(passwordToFile[counterOfResult]) + counterOfResult + passwordToFile.length()));
+        if(counterOfResult % 2 == 0){
+            result += char(int(input[i] + (int)(passwordToFile[counterOfResult]) + counterOfResult + passwordToFile.length()));
+        }else{
+            result += char(int(input[i] + (int)(passwordToFile[counterOfResult]) - counterOfResult + passwordToFile.length()));
+        }
+
     }
     counterOfResult++;
     return result;
@@ -62,7 +70,12 @@ auto PasswordManager::decryptData(std::string line) -> std::string {
 
     for (int i = 0; i < line.length(); i++) {
         //char decryptedChar = line[i] - (passwordToFile[counterOfResult] + counterOfResult + passwordToFile.length());
-        result += char(int(line[i] - (int)(passwordToFile[counterOfResult] + counterOfResult + passwordToFile.length())));
+        if(counterOfResult % 2 == 0){
+            result += char(int(line[i] - (int)(passwordToFile[counterOfResult] + counterOfResult + passwordToFile.length())));
+        }else{
+            result += char(int(line[i] - (int)(passwordToFile[counterOfResult] - counterOfResult + passwordToFile.length())));
+        }
+
     }
     counterOfResult++;
     return result;
@@ -121,13 +134,15 @@ bool PasswordManager::fileExists() {
  */
 bool PasswordManager::saveToFile() {
     std::ofstream file(fileName);
-
+    //Timestamp timestamp;
     if(file.is_open()){
         counterOfResult = 0;
         for (const Password& p : passwordList) {
             std::string line = encryptData(p.getName(), p.getPassword(), p.getCategory(), p.getWebsite(), p.getLogin());
             file << line << std::endl;
         }
+        //file << timestamp.getHours() << timestamp.getMinutes() << timestamp.getSeconds() << std::endl;
+        file << lastTimeStamp << std::endl;
         file.close();
         return true;
     } else{
@@ -136,27 +151,68 @@ bool PasswordManager::saveToFile() {
     }
 }
 /**
+ * Funkcja zlicza ilosc linii w programie
+ * @param file
+ * @return
+ */
+int PasswordManager::counterLines(std::ifstream& file){
+    int counter = 0;
+    std::string line;
+    while(std::getline(file, line)){
+        ++counter;
+    }
+    return counter;
+}
+/**
+ * Funkcja tworzy nowego timestampa z aktualnym czasem
+ * @return zwraca go w postaci stringa
+ */
+std::string PasswordManager::newTimeStamp(){
+    Timestamp timestamp;
+    std::string hours = std::to_string(timestamp.getHours());
+    std::string minutes = std::to_string(timestamp.getMinutes());
+    std::string secundos = std::to_string(timestamp.getSeconds());
+    std::string line;
+    line = hours+minutes+secundos;
+
+    return line;
+}
+/**
  * Funkcja wczytuje dane z pliku fileName i zapisuje je do wektora passwordList
  * Zwraca true jesli dane zostaly wczytane, w przeciwnym przypadku false
  */
 bool PasswordManager::loadFromFile() {
+    std::ifstream fileIn(fileName);
+
+    if(!fileIn.is_open()){
+        return false;
+    }
+    int numberOfLines = counterLines(fileIn);
+    fileIn.close();
+
     std::ifstream file(fileName);
     std::string line;
     if(file.is_open()){
         counterOfResult = 0;
+        int counterOfWhileLoop = 0;
         while(std::getline(file, line)){
-            std::string name, password, category, website, login;
-            std::string decryptedLine = decryptData(line);
-            std::stringstream ss(decryptedLine);
-            //std::stringstream ss(line);
-            std::getline(ss, name, '|');
-            std::getline(ss, password, '|');
-            std::getline(ss, category, '|');
-            std::getline(ss, website, '|');
-            std::getline(ss, login, '|');
+            ++counterOfWhileLoop;
+            if(counterOfWhileLoop == numberOfLines){
+                //tworze nowego timestampa
+                lastTimeStamp = newTimeStamp();
+            }else {
+                std::string name, password, category, website, login;
+                std::string decryptedLine = decryptData(line);
+                std::stringstream ss(decryptedLine);
+                std::getline(ss, name, '|');
+                std::getline(ss, password, '|');
+                std::getline(ss, category, '|');
+                std::getline(ss, website, '|');
+                std::getline(ss, login, '|');
 
-            Password p(name, password, category, website, login);
-            passwordList.push_back(p);
+                Password p(name, password, category, website, login);
+                passwordList.push_back(p);
+            }
         }
         file.close();
         return true;
@@ -221,6 +277,15 @@ void PasswordManager::isPasswordSecure(const std::string& password){
     }
 
 }
+/**
+ * Funkcja sprawdza czy haslo spelnia wymagania uzytkownika z funkcji generatePassword()
+ * @param chars
+ * @param small
+ * @param big
+ * @param dig
+ * @param spec
+ * @return
+ */
 bool PasswordManager::isPasswordGood(std::string const& chars, bool small, bool big, bool dig, bool spec){
     if(small && !hasLowerCase(chars)){
         return false;
@@ -238,7 +303,7 @@ bool PasswordManager::isPasswordGood(std::string const& chars, bool small, bool 
 }
 /**
  * Funkcja generuje haslo
- * Nie dziala dlugosc generowanych hasel tzn w przypadku podania np dlugosci 6 haslo generuje sie dluzsze
+ * Pyta uzytkownika o specyfikacje
  */
 std::string PasswordManager::generatePassword() {
     std::string generatedPassword;
@@ -322,7 +387,11 @@ std::string PasswordManager::generatePassword() {
     }
     return generatedPassword;
 }
-
+/**
+ * Sprawdza czy haslo istnieje w rekordach
+ * @param password - haslo sprawdzane
+ * @return - zwraca wartosc logiczna czy haslo istnieje
+ */
 bool PasswordManager::isPasswordExists(const std::string& password){
     for(const auto& x : passwordList){
         if(password == x.getPassword()){
@@ -334,7 +403,8 @@ bool PasswordManager::isPasswordExists(const std::string& password){
 }
 /**
  * Funkcja dodaje nowe haslo do wektora passwordList
- * nie dziala sprawdzanie czy haslo wystepowalo w bazie i to powinno blokowac przechodzenie do nastepnego etapu
+ * Pozwala na dodanie dowolnego hasla od uzytkownika jednak informuje o potencjalnych brakach w bezpieczenstwie
+ * Pozwala rowniez na generowanie hasel ze sprecyzowanymi specyfikacjami od uzytkownika
  */
 void PasswordManager::addPassword() {
     std::string name, password, category, website, login;
@@ -390,14 +460,12 @@ void PasswordManager::addPassword() {
     std::getline(std::cin, login);
     Password p(name, password, category, website, login);
     passwordList.push_back(p);
-    saveToFile();
 }
 
 /**
  * Funkcja usuwa haslo o podanym indeksie z wektora passwordList
  *
- * Usuń hasło – usuwa wybrane hasło lub hasła. Przed każdym usunięciem powinniśmy powiadomić
- * o tym użytkownika szczególnie jeżeli usuwane jest więcej niż jedno hasło.
+ * Usuń hasło – usuwa wybrane hasło lub hasła. Przed każdym usunięciem informuje uzytkownika o nieodwracalnych skutkach
  */
 void PasswordManager::removePassword() {
     std::cout << "\nChcesz usunac 1 czy wiecej hasel?\n";
@@ -417,7 +485,6 @@ void PasswordManager::removePassword() {
         std::cin >> index;
         if(index < passwordList.size()){
             passwordList.erase(passwordList.begin() + index);
-            saveToFile();
         }else{
             std::cout << "\nBledny index\n";
         }
@@ -438,7 +505,6 @@ void PasswordManager::removePassword() {
             std::cin >> index;
             if(index < passwordList.size()){
                 passwordList.erase(passwordList.begin() + index);
-                saveToFile();
             }else{
                 std::cout << "\nBledny index\n";
             }
@@ -459,10 +525,10 @@ void PasswordManager::printPasswords() {
         std::cout << i++ << ". " << p.getName() << " | " << p.getPassword() << " | " << p.getCategory()
                   << " | " << p.getWebsite() << " | " << p.getLogin() << '\n';
     }
+    std::cout << "OSTATNIA MODYFIKACJA PROGRAMU: " << lastTimeStamp << '\n';
 }
 /**
  * Funkcja umożliwia zmiane hasla o podanym indeksie w wektorze passwordList
- * Edytuj hasło – pozwala na edycje danych w istniejącym już haśle.
  */
 void PasswordManager::changePassword() {
     std::cout << "\nZmiana hasla\n";
@@ -486,7 +552,6 @@ void PasswordManager::changePassword() {
             std::cout << "Podaj nowa nazwe: ";
             std::cin >> newName;
             passwordList[index].setName(newName);
-            saveToFile();
         } else if (choise == 2) {
             bool passwordSet = false;
             std::string newPassword;
@@ -505,25 +570,21 @@ void PasswordManager::changePassword() {
                 }
             }
             passwordList[index].setPassword(newPassword);
-            saveToFile();
         } else if (choise == 3) {
             std::string newCategory;
             std::cout << ">>Podaj nowa kategorie: ";
             std::cin >> newCategory;
             passwordList[index].setCategory(newCategory);
-            saveToFile();
         } else if (choise == 4) {
             std::string newWebsite;
             std::cout << ">>Podaj nowa strone: ";
             std::cin >> newWebsite;
             passwordList[index].setWebsite(newWebsite);
-            saveToFile();
         } else if (choise == 5) {
             std::string newLogin;
             std::cout << "Podaj nowy login: ";
             std::cin >> newLogin;
             passwordList[index].setLogin(newLogin);
-            saveToFile();
         } else {
             std::cout << "Wybrales zly numer :(\n";
         }
@@ -533,8 +594,8 @@ void PasswordManager::changePassword() {
 }
 
 /**
- * Funkcja szuka podobnych wynikow wsrod hasel
- * Pyta o wszystkie mozliwe dane i jezeli ktores haslo zawiera podana m.in kategorie to wyswietli vector z tymi wynikami
+ * Funkcja szuka podobnych wynikow wsrod rekordow. Pyta uzytkownika o parametry w jakich szuka podanych przez niego fraz
+ * i rekordy w ktorych podane frazy wystepuja
  */
 void PasswordManager::searchPassword(){
     std::cout << "Wybierz parametr, po ktorym chcesz szukac: \n";
@@ -623,8 +684,7 @@ for(auto const& x : indexes) {
     }
 }
 /**
- * Funkcja sortuje po parametrach
- * NALEZY JAK NAJSZYBCIEJ JA EDYTOWAC
+ * Funkcja sortuje po parametrach wykorzystuje stable sorta
  */
 void PasswordManager::sortPasswords(){
     std::cout << "Podaj parametry sortowania:\n";
@@ -671,13 +731,18 @@ void PasswordManager::sortPasswords(){
         std::cout << p.getName() << " | " << p.getPassword() << " | " << p.getCategory() << " | " << p.getWebsite() << " | " << p.getLogin() << '\n';
     }
 }
+/**
+ * Funkcja wyswietla zawartosc
+ */
 void PasswordManager::printCategory(){
     int index = 0;
     for(const auto& x : categoryList){
         std::cout << index++ << ". " << x << '\n';
     }
 }
-
+/**
+ * Funkcja dodaje do categoryList nowe kategorie
+ */
 void PasswordManager::addCategory(){
     std::cout << "Oto kategorie ktore juz istnieja: \n";
     printCategory(); //wyswietla zawartosc vectora categoryList
@@ -701,7 +766,9 @@ void PasswordManager::addCategory(){
         std::cout << "Nie mozna dodac kategorii, poniewaz ta juz istnieje!\n";
     }
 }
-
+/**
+ * Funkcja usuwa z catogryList kategorie oraz wszystkie rekordy ktore zawieraja podana kategorie
+ */
 void PasswordManager::deleteCategory(){
 
     std::cout << "Ponizej znajduje sie lista aktualnych kategorii: \n";
@@ -723,18 +790,19 @@ void PasswordManager::deleteCategory(){
             }
         }
         categoryList.erase(categoryList.begin() + index);
-        saveToFile();
     }else{
         std::cout << "\nBledny index\n";
     }
 }
-
+/**
+ * Funkcja wyświetla menu oraz pobiera od uzytkownika dzialanie programu
+ */
 void PasswordManager::menu() {
 
     while (true) {
         std::cout << "\n>>- - - - - - - - - - - - - - - - - - - - - - -<<\n";
         std::cout << "WYBIERZ DZIALANIE:\n";
-        std::cout << "[1] Wyswietl hasla\n";
+        std::cout << "[1] Wyswietl hasla i info o ostatniej modyfikacji\n";
         std::cout << "[2] Dodaj nowe haslo\n";
         std::cout << "[3] Usun haslo\n";
         std::cout << "[4] Edytuj haslo\n";
@@ -750,29 +818,38 @@ void PasswordManager::menu() {
         switch (choice) {
             case 1:
                 printPasswords();
+                saveToFile();
                 break;
             case 2:
                 addPassword();
+                saveToFile();
                 break;
             case 3:
                 removePassword();
+                saveToFile();
                 break;
             case 4:
                 changePassword();
+                saveToFile();
                 break;
             case 5:
                 searchPassword();
+                saveToFile();
                 break;
             case 6:
                 sortPasswords();
+                saveToFile();
                 break;
             case 7:
                 addCategory();
+                saveToFile();
                 break;
             case 8:
                 deleteCategory();
+                saveToFile();
                 break;
             case 9:
+                saveToFile();
                 exit(0); //zamyka konsole
             default:
                 std::cout << "\nNieprawidlowy wybor.\n";
@@ -801,6 +878,7 @@ void PasswordManager::start() {
             passwordToFile = enterPasswordToFile();
             setPasswordToFile(passwordToFile);
             if (loadFromFile()) {
+                setTimeStamp(newTimeStamp());
                 break;
             }
         }
