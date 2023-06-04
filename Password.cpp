@@ -6,22 +6,6 @@
 
 Password::Password() {}
 
-Password::Password(std::string name, std::string password, std::string category) {
-    this->name = name;
-    this->password = password;
-    this->category = category;
-    this->website = "";
-    this->login = "";
-}
-
-Password::Password(std::string name, std::string password, std::string category, std::string website) {
-    this->name = name;
-    this->password = password;
-    this->category = category;
-    this->website = website;
-    this->login = "";
-}
-
 Password::Password(std::string name, std::string password, std::string category, std::string website, std::string login) {
     this->name = name;
     this->password = password;

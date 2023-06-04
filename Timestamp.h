@@ -9,6 +9,9 @@ private:
     int mm;
     int ss;
 public:
+    /**
+ * Konstruktor klasy TimeStamp, ktory ustawia pola hh,mm,ss na akutalny czas
+ */
     Timestamp();
     int getHours() const;
     int getMinutes() const;

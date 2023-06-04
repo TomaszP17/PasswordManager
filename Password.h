@@ -16,8 +16,6 @@ private:
     std::string login;
 public:
     Password();
-    Password(std::string name, std::string password, std::string category);
-    Password(std::string name, std::string password, std::string category, std::string website);
     Password(std::string name, std::string password, std::string category, std::string website, std::string login);
     const std::string &getName() const;
     void setName(const std::string &name);
